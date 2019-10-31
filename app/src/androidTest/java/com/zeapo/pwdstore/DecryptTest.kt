@@ -20,6 +20,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,17 +35,18 @@ import java.nio.charset.StandardCharsets
 class DecryptTest {
     private lateinit var targetContext: Context
     private lateinit var testContext: Context
-    lateinit var activity: PgpActivity
+    private lateinit var activity: PgpActivity
 
     private val name = "sub"
     private val parentPath = "/category/"
-    lateinit var path: String
-    lateinit var repoPath: String
+    private lateinit var path: String
+    private lateinit var repoPath: String
 
     @Rule @JvmField
-    var mActivityRule: ActivityTestRule<PgpActivity> = ActivityTestRule<PgpActivity>(PgpActivity::class.java, true, false)
+    val activityRule: ActivityTestRule<PgpActivity> = ActivityTestRule(PgpActivity::class.java, true, false)
 
-    private fun init() {
+    @Before
+    fun init() {
         targetContext = InstrumentationRegistry.getInstrumentation().targetContext
         testContext = InstrumentationRegistry.getInstrumentation().context
         copyAssets("encrypted-store", File(targetContext.filesDir, "test-store").absolutePath)
@@ -56,7 +58,7 @@ class DecryptTest {
         intent.putExtra("FILE_PATH", path)
         intent.putExtra("REPO_PATH", repoPath)
 
-        activity = mActivityRule.launchActivity(intent)
+        activity = activityRule.launchActivity(intent)
     }
 
     @Test
@@ -66,20 +68,13 @@ class DecryptTest {
 
         assertEquals("/cat1/n1.gpg", PgpActivity.getRelativePath(pathOne, "/fake/path"))
         assertEquals("/cat1/", PgpActivity.getParentPath(pathOne, "/fake/path"))
-        assertEquals("n1", PgpActivity.getName("$pathOne/fake/path"))
-        // test that even if we append a `/` it still works
-        assertEquals("n1", PgpActivity.getName("$pathOne/fake/path/"))
 
         assertEquals("/n2.gpg", PgpActivity.getRelativePath(pathTwo, "/fake/path"))
         assertEquals("/", PgpActivity.getParentPath(pathTwo, "/fake/path"))
-        assertEquals("n2", PgpActivity.getName("$pathTwo/fake/path"))
-        assertEquals("n2", PgpActivity.getName("$pathTwo/fake/path/"))
     }
 
     @Test
     fun activityShouldShowName() {
-        init()
-
         val categoryView = activity.crypto_password_category_decrypt
         assertNotNull(categoryView)
         assertEquals(parentPath, categoryView.text)
@@ -92,8 +87,7 @@ class DecryptTest {
     @SuppressLint("ApplySharedPref") // we need the preferences right away
     @Test
     fun shouldDecrypt() {
-        init()
-        val clearPass = IOUtils.toString(testContext.assets.open("clear-store/category/sub"), StandardCharsets.UTF_8)
+        val clearPass = File("clear-store/category/sub").readText(StandardCharsets.UTF_8)
         val passEntry = PasswordEntry(clearPass)
 
         // Setup the timer to 1 second
@@ -115,14 +109,14 @@ class DecryptTest {
 
         // did we copy the password?
         val clipboard: ClipboardManager = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        assertEquals(passEntry.password, clipboard.primaryClip.getItemAt(0).text)
+        assertEquals(passEntry.password, clipboard.primaryClip?.getItemAt(0)?.text)
 
         // wait until the clipboard is cleared
         SystemClock.sleep(4000)
 
         // The clipboard should be cleared!!
-        for(i in 0..clipboard.primaryClip.itemCount) {
-            assertEquals("", clipboard.primaryClip.getItemAt(i).text)
+        for(i in 0..(clipboard.primaryClip?.itemCount ?: 0)) {
+            assertEquals("", clipboard.primaryClip?.getItemAt(i)?.text)
         }
 
         // set back the timer
@@ -142,7 +136,7 @@ class DecryptTest {
                 val destPath = "$destination/$filename"
                 val sourcePath = "$source/$filename"
 
-                if (assetManager.list(sourcePath).isNotEmpty()) {
+                if ((assetManager.list(sourcePath) ?: emptyArray<String>()).isNotEmpty()) {
                     FileUtils.forceMkdir(File(destination, filename))
                     copyAssets("$source/$filename", destPath)
                 } else {

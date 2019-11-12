@@ -88,6 +88,7 @@ dependencies {
     implementation 'commons-io:commons-io:' + versions.commons_io
     implementation 'commons-codec:commons-codec:' + versions.commons_codec
     implementation 'org.sufficientlysecure:sshauthentication-api:' + versions.sshauth
+    implementation 'com.hierynomus:sshj:' + versions.sshj
 
     // Testing-only dependencies
     androidTestImplementation 'junit:junit:4.13-rc-1'

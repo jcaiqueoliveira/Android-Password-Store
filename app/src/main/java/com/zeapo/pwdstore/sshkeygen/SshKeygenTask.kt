@@ -12,11 +12,11 @@ import androidx.fragment.app.DialogFragment
 import androidx.preference.PreferenceManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jcraft.jsch.JSch
-import com.jcraft.jsch.KeyPair
 import com.zeapo.pwdstore.R
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.ref.WeakReference
+import java.security.KeyPairGenerator
 
 class KeyGenerateTask(activity: AppCompatActivity) : AsyncTask<String?, Void?, Exception?>() {
     private var pd: ProgressDialog? = null
@@ -27,22 +27,23 @@ class KeyGenerateTask(activity: AppCompatActivity) : AsyncTask<String?, Void?, E
     }
 
     override fun doInBackground(vararg strings: String?): Exception? {
-        val length = strings[0]?.toInt()
+        val length = strings[0]?.toInt() ?: 128
         val passphrase = strings[1]
         val comment = strings[2]
         val jsch = JSch()
         try {
-            val kp = length?.let { KeyPair.genKeyPair(jsch, KeyPair.RSA, it) }
-            var file = File(weakReference.get()!!.filesDir.toString() + "/.ssh_key")
-            var out = FileOutputStream(file, false)
-            if (passphrase?.isNotEmpty()!!) {
-                kp?.writePrivateKey(out, passphrase.toByteArray())
-            } else {
-                kp?.writePrivateKey(out)
+            val keygen = KeyPairGenerator.getInstance("RSA").apply {
+                initialize(length)
             }
-            file = File(weakReference.get()!!.filesDir.toString() + "/.ssh_key.pub")
-            out = FileOutputStream(file, false)
-            kp?.writePublicKey(out, comment)
+            val keypair = keygen.genKeyPair()
+            val privateKeyFile = File("${weakReference.get()?.filesDir.toString()}/.ssh_key")
+            val publicKeyFile = File("${weakReference.get()?.filesDir.toString()}/.ssh_key.pub")
+            FileOutputStream(privateKeyFile, false).use { fos ->
+                fos.write(keypair.private.encoded)
+            }
+            FileOutputStream(publicKeyFile, false).use { fos ->
+                fos.write(keypair.public.encoded)
+            }
             return null
         } catch (e: Exception) {
             e.printStackTrace()
@@ -54,7 +55,7 @@ class KeyGenerateTask(activity: AppCompatActivity) : AsyncTask<String?, Void?, E
         super.onPostExecute(e)
         val activity = weakReference.get()
         if (activity is AppCompatActivity) {
-            pd!!.dismiss()
+            pd?.dismiss()
             if (e == null) {
                 Toast.makeText(activity, "SSH-key generated", Toast.LENGTH_LONG).show()
                 val df: DialogFragment = ShowSshKeyFragment()

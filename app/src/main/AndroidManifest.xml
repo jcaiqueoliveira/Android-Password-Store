@@ -68,6 +68,7 @@
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".SelectFolderActivity" />
         <activity android:name=".sshkeygen.SshKeyGenActivity" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".crypto.GetKeyIdsActivity" android:theme="@style/Theme.AppCompat.Translucent"/>
     </application>
 
 </manifest>

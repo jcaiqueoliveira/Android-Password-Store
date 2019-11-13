@@ -4,19 +4,14 @@
  */
 package com.zeapo.pwdstore.crypto
 
-import android.app.PendingIntent
 import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
 import android.content.SharedPreferences
 import android.graphics.Typeface
 import android.os.AsyncTask
 import android.os.Bundle
 import android.os.ConditionVariable
 import android.os.Handler
-import android.text.TextUtils
 import android.text.format.DateUtils
 import android.text.method.PasswordTransformationMethod
 import android.util.Log
@@ -25,19 +20,15 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowManager
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.preference.PreferenceManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import com.zeapo.pwdstore.PasswordEntry
 import com.zeapo.pwdstore.R
-import com.zeapo.pwdstore.UserPreference
 import com.zeapo.pwdstore.ui.dialogs.PasswordGeneratorDialogFragment
 import com.zeapo.pwdstore.utils.Otp
 import java.io.ByteArrayInputStream
@@ -46,31 +37,20 @@ import java.io.File
 import java.nio.charset.Charset
 import java.util.Date
 import kotlinx.android.synthetic.main.decrypt_layout.*
-import kotlinx.android.synthetic.main.encrypt_layout.crypto_extra_edit
-import kotlinx.android.synthetic.main.encrypt_layout.crypto_password_category
-import kotlinx.android.synthetic.main.encrypt_layout.crypto_password_edit
-import kotlinx.android.synthetic.main.encrypt_layout.crypto_password_file_edit
-import kotlinx.android.synthetic.main.encrypt_layout.generate_password
-import me.msfjarvis.openpgpktx.OpenPgpError
+import kotlinx.android.synthetic.main.encrypt_layout.*
 import me.msfjarvis.openpgpktx.util.OpenPgpApi
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.ACTION_DECRYPT_VERIFY
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE_ERROR
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE_SUCCESS
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE_USER_INTERACTION_REQUIRED
-import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_ERROR
-import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_INTENT
 import me.msfjarvis.openpgpktx.util.OpenPgpServiceConnection
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FilenameUtils
 import org.openintents.openpgp.IOpenPgpService2
 
-class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
-    private val clipboard: ClipboardManager by lazy {
-        getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    }
+class PgpActivity : BasePgpActivity() {
     private var passwordEntry: PasswordEntry? = null
-    private var api: OpenPgpApi? = null
 
     private var editName: String? = null
     private var editPass: String? = null
@@ -91,7 +71,6 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
     }
     private val relativeParentPath: String by lazy { getParentPath(fullPath, repoPath) }
 
-    val settings: SharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
     private val keyIDs: MutableSet<String> by lazy {
         settings.getStringSet("openpgp_key_ids_set", mutableSetOf()) ?: emptySet()
     }
@@ -99,21 +78,6 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
-
-        // some persistence
-        val providerPackageName = settings.getString("openpgp_provider_list", "")
-
-        if (TextUtils.isEmpty(providerPackageName)) {
-            showSnackbar(resources.getString(R.string.provider_toast_text), Snackbar.LENGTH_LONG)
-            val intent = Intent(this, UserPreference::class.java)
-            startActivityForResult(intent, OPEN_PGP_BOUND)
-        } else {
-            // bind to service
-            mServiceConnection = OpenPgpServiceConnection(this, providerPackageName, this)
-            mServiceConnection?.bindToService()
-            supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        }
 
         when (operation) {
             "DECRYPT", "EDIT" -> {
@@ -183,57 +147,6 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
             else -> return super.onOptionsItemSelected(item)
         }
         return true
-    }
-
-    /**
-     * Shows a simple toast message
-     */
-    private fun showSnackbar(message: String, length: Int = Snackbar.LENGTH_SHORT) {
-        runOnUiThread { Snackbar.make(findViewById(android.R.id.content), message, length).show() }
-    }
-
-    /**
-     * Handle the case where OpenKeychain returns that it needs to interact with the user
-     *
-     * @param result The intent returned by OpenKeychain
-     * @param requestCode The code we'd like to use to identify the behaviour
-     */
-    private fun handleUserInteractionRequest(result: Intent, requestCode: Int) {
-        Log.i(TAG, "RESULT_CODE_USER_INTERACTION_REQUIRED")
-
-        val pi: PendingIntent? = result.getParcelableExtra(RESULT_INTENT)
-        try {
-            this@PgpActivity.startIntentSenderFromChild(
-                    this@PgpActivity, pi?.intentSender, requestCode,
-                    null, 0, 0, 0
-            )
-        } catch (e: IntentSender.SendIntentException) {
-            Log.e(TAG, "SendIntentException", e)
-        }
-    }
-
-    /**
-     * Handle the error returned by OpenKeychain
-     *
-     * @param result The intent returned by OpenKeychain
-     */
-    private fun handleError(result: Intent) {
-        // TODO show what kind of error it is
-        /* For example:
-         * No suitable key found -> no key in OpenKeyChain
-         *
-         * Check in open-pgp-lib how their definitions and error code
-         */
-        val error: OpenPgpError? = result.getParcelableExtra(RESULT_ERROR)
-        if (error != null) {
-            showSnackbar("Error from OpenKeyChain : " + error.message)
-            Log.e(TAG, "onError getErrorId:" + error.message)
-            Log.e(TAG, "onError getMessage:" + error.message)
-        }
-    }
-
-    private fun initOpenPgpApi() {
-        api = api ?: OpenPgpApi(this, mServiceConnection!!.service!!)
     }
 
     private fun decryptAndVerify(receivedIntent: Intent? = null) {
@@ -553,66 +466,25 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
         setResult(RESULT_OK, returnIntent)
     }
 
-    /**
-     * Get the Key ids from OpenKeychain
-     */
-    private fun getKeyIds(receivedIntent: Intent? = null) {
-        val data = receivedIntent ?: Intent()
-        data.action = OpenPgpApi.ACTION_GET_KEY_IDS
-        api?.executeApiAsync(data, null, null, object : OpenPgpApi.IOpenPgpCallback {
-            override fun onReturn(result: Intent?) {
-                when (result?.getIntExtra(RESULT_CODE, RESULT_CODE_ERROR)) {
-                    RESULT_CODE_SUCCESS -> {
-                        try {
-                            val ids = result.getLongArrayExtra(OpenPgpApi.RESULT_KEY_IDS)
-                                    ?: LongArray(0)
-                            val keys = ids.map { it.toString() }.toSet()
-
-                            // use Long
-                            settings.edit().putStringSet("openpgp_key_ids_set", keys).apply()
-
-                            showSnackbar("PGP keys selected")
-
-                            setResult(RESULT_OK)
-                            finish()
-                        } catch (e: Exception) {
-                            Log.e(TAG, "An Exception occurred", e)
-                        }
-                    }
-                    RESULT_CODE_USER_INTERACTION_REQUIRED -> handleUserInteractionRequest(result, REQUEST_KEY_ID)
-                    RESULT_CODE_ERROR -> handleError(result)
-                }
-            }
-        })
-    }
-
     override fun onError(e: Exception?) {}
 
     /**
      * The action to take when the PGP service is bound
      */
     override fun onBound(service: IOpenPgpService2?) {
-        initOpenPgpApi()
+        super.onBound(service)
         when (operation) {
             "EDIT", "DECRYPT" -> decryptAndVerify()
-            "GET_KEY_ID" -> getKeyIds()
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (data == null) {
-            setResult(RESULT_CANCELED, null)
-            finish()
-            return
-        }
-
         // try again after user interaction
         if (resultCode == RESULT_OK) {
             when (requestCode) {
                 REQUEST_DECRYPT -> decryptAndVerify(data)
-                REQUEST_KEY_ID -> getKeyIds(data)
                 else -> {
                     setResult(RESULT_OK)
                     finish()
@@ -664,7 +536,7 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
         }
 
         val clip = ClipData.newPlainText("pgp_handler_result_pm", pass)
-        clipboard.setPrimaryClip(clip)
+        clipboard?.setPrimaryClip(clip)
 
         var clearAfter = 45
         try {
@@ -683,13 +555,13 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
 
     private fun copyUsernameToClipBoard(username: String) {
         val clip = ClipData.newPlainText("pgp_handler_result_pm", username)
-        clipboard.setPrimaryClip(clip)
+        clipboard?.setPrimaryClip(clip)
         showSnackbar(resources.getString(R.string.clipboard_username_toast_text))
     }
 
     private fun copyOtpToClipBoard(code: String) {
         val clip = ClipData.newPlainText("pgp_handler_result_pm", code)
-        clipboard.setPrimaryClip(clip)
+        clipboard?.setPrimaryClip(clip)
         showSnackbar(resources.getString(R.string.clipboard_otp_toast_text))
     }
 
@@ -744,7 +616,7 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
         //
         // This signals the DelayShow task to stop and avoids it having
         // to poll the AsyncTask.isCancelled() excessively. If skipClearing
-        // is true, the cancelled task won't clear the clipboard.
+        // is true, the cancelled task won't clear the clipboard?.
         fun cancelAndSignal(skipClearing: Boolean) {
             skip = skipClearing
             cancelNotify.open()
@@ -799,13 +671,13 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
             // No need to validate clear_after_copy. It was validated in copyPasswordToClipBoard()
             Log.d("DELAY_SHOW", "Clearing the clipboard")
             val clip = ClipData.newPlainText("pgp_handler_result_pm", "")
-            clipboard.setPrimaryClip(clip)
+            clipboard?.setPrimaryClip(clip)
             if (settings.getBoolean("clear_clipboard_20x", false)) {
                 val handler = Handler()
                 for (i in 0..19) {
                     val count = i.toString()
                     handler.postDelayed(
-                            { clipboard.setPrimaryClip(ClipData.newPlainText(count, count)) },
+                            { clipboard?.setPrimaryClip(ClipData.newPlainText(count, count)) },
                             (i * 500).toLong()
                     )
                 }
@@ -831,11 +703,6 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
     }
 
     companion object {
-        const val OPEN_PGP_BOUND = 101
-        const val REQUEST_DECRYPT = 202
-        const val REQUEST_KEY_ID = 203
-
-        const val TAG = "PgpActivity"
 
         private var delayTask: DelayShow? = null
 

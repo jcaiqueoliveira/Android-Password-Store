@@ -31,7 +31,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.zeapo.pwdstore.autofill.AutofillPreferenceActivity
-import com.zeapo.pwdstore.crypto.PgpActivity
+import com.zeapo.pwdstore.crypto.GetKeyIdsActivity
 import com.zeapo.pwdstore.git.GitActivity
 import com.zeapo.pwdstore.sshkeygen.ShowSshKeyFragment
 import com.zeapo.pwdstore.sshkeygen.SshKeyGenActivity
@@ -132,9 +132,7 @@ class UserPreference : AppCompatActivity() {
                     Snackbar.make(requireView(), resources.getString(R.string.provider_toast_text), Snackbar.LENGTH_LONG).show()
                     false
                 } else {
-                    val intent = Intent(callingActivity, PgpActivity::class.java)
-                    intent.putExtra("OPERATION", "GET_KEY_ID")
-                    startActivityForResult(intent, IMPORT_PGP_KEY)
+                    startActivityForResult(Intent(callingActivity, GetKeyIdsActivity::class.java), IMPORT_PGP_KEY)
                     true
                 }
             }

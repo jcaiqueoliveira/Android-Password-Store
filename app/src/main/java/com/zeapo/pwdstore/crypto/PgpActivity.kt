@@ -12,7 +12,6 @@ import android.os.AsyncTask
 import android.os.Bundle
 import android.os.ConditionVariable
 import android.os.Handler
-import android.text.format.DateUtils
 import android.text.method.PasswordTransformationMethod
 import android.util.Log
 import android.view.LayoutInflater
@@ -44,7 +43,6 @@ import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE_ERROR
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE_SUCCESS
 import me.msfjarvis.openpgpktx.util.OpenPgpApi.Companion.RESULT_CODE_USER_INTERACTION_REQUIRED
-import me.msfjarvis.openpgpktx.util.OpenPgpServiceConnection
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FilenameUtils
 import org.openintents.openpgp.IOpenPgpService2
@@ -57,41 +55,11 @@ class PgpActivity : BasePgpActivity() {
     private var editExtra: String? = null
 
     private val operation: String by lazy { intent.getStringExtra("OPERATION") }
-    private val repoPath: String by lazy { intent.getStringExtra("REPO_PATH") }
-
-    private val fullPath: String by lazy { intent.getStringExtra("FILE_PATH") }
-    private val name: String by lazy { getName(fullPath) }
-    private val lastChangedString: CharSequence by lazy {
-        getLastChangedString(
-                intent.getLongExtra(
-                        "LAST_CHANGED_TIMESTAMP",
-                        -1L
-                )
-        )
-    }
-    private val relativeParentPath: String by lazy { getParentPath(fullPath, repoPath) }
-
-    private val keyIDs: MutableSet<String> by lazy {
-        settings.getStringSet("openpgp_key_ids_set", mutableSetOf()) ?: emptySet()
-    }
-    private var mServiceConnection: OpenPgpServiceConnection? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         when (operation) {
-            "DECRYPT", "EDIT" -> {
-                setContentView(R.layout.decrypt_layout)
-                crypto_password_category_decrypt.text = relativeParentPath
-                crypto_password_file.text = name
-
-                crypto_password_last_changed.text = try {
-                    this.resources.getString(R.string.last_changed, lastChangedString)
-                } catch (e: RuntimeException) {
-                    showSnackbar(getString(R.string.get_last_changed_failed))
-                    ""
-                }
-            }
             "ENCRYPT" -> {
                 setContentView(R.layout.encrypt_layout)
 
@@ -117,7 +85,6 @@ class PgpActivity : BasePgpActivity() {
         // Do not use the value `operation` in this case as it is not valid when editing
         val menuId = when (intent.getStringExtra("OPERATION")) {
             "ENCRYPT", "EDIT" -> R.menu.pgp_handler_new_password
-            "DECRYPT" -> R.menu.pgp_handler
             else -> R.menu.pgp_handler
         }
 
@@ -590,18 +557,6 @@ class PgpActivity : BasePgpActivity() {
         // launch a new one
         delayTask = DelayShow(this)
         delayTask?.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR)
-    }
-
-    /**
-     * Gets a relative string describing when this shape was last changed
-     * (e.g. "one hour ago")
-     */
-    private fun getLastChangedString(timeStamp: Long): CharSequence {
-        if (timeStamp < 0) {
-            throw RuntimeException()
-        }
-
-        return DateUtils.getRelativeTimeSpanString(this, timeStamp, true)
     }
 
     @Suppress("StaticFieldLeak")

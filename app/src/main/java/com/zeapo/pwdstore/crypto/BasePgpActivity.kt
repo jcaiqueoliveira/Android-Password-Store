@@ -11,6 +11,7 @@ import android.content.IntentSender
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.TextUtils
+import android.text.format.DateUtils
 import android.util.Log
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
@@ -31,7 +32,25 @@ open class BasePgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBou
     lateinit var settings: SharedPreferences
 
     var api: OpenPgpApi? = null
-    private var mServiceConnection: OpenPgpServiceConnection? = null
+    var mServiceConnection: OpenPgpServiceConnection? = null
+
+    val repoPath: String by lazy { intent.getStringExtra("REPO_PATH") }
+
+    val fullPath: String by lazy { intent.getStringExtra("FILE_PATH") }
+    val name: String by lazy { PgpActivity.getName(fullPath) }
+    val lastChangedString: CharSequence by lazy {
+        getLastChangedString(
+            intent.getLongExtra(
+                "LAST_CHANGED_TIMESTAMP",
+                -1L
+            )
+        )
+    }
+    val relativeParentPath: String by lazy { PgpActivity.getParentPath(fullPath, repoPath) }
+
+    val keyIDs: MutableSet<String> by lazy {
+        settings.getStringSet("openpgp_key_ids_set", mutableSetOf()) ?: emptySet()
+    }
 
     override fun onBound(service: IOpenPgpService2?) {
         initOpenPgpApi()
@@ -119,6 +138,18 @@ open class BasePgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBou
      */
     fun showSnackbar(message: String, length: Int = Snackbar.LENGTH_SHORT) {
         runOnUiThread { Snackbar.make(findViewById(android.R.id.content), message, length).show() }
+    }
+
+    /**
+     * Gets a relative string describing when this shape was last changed
+     * (e.g. "one hour ago")
+     */
+    private fun getLastChangedString(timeStamp: Long): CharSequence {
+        if (timeStamp < 0) {
+            throw RuntimeException()
+        }
+
+        return DateUtils.getRelativeTimeSpanString(this, timeStamp, true)
     }
 
     companion object {

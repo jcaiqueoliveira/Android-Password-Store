@@ -4,12 +4,12 @@
  */
 package com.zeapo.pwdstore;
 
-import com.zeapo.pwdstore.utils.Otp;
+import com.zeapo.pwdstore.utils.OTP;
 import junit.framework.TestCase;
 
-public class OtpTest extends TestCase {
+public class OTPTest extends TestCase {
     public void testOtp() {
-        String code = Otp.calculateCode("JBSWY3DPEHPK3PXP", 0L, "sha1", "s");
+        String code = OTP.calculateCode("JBSWY3DPEHPK3PXP", 0L, "sha1", "s");
         assertEquals("282760", code);
     }
 }

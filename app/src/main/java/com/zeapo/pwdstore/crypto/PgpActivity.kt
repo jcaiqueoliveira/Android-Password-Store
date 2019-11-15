@@ -39,7 +39,7 @@ import com.zeapo.pwdstore.PasswordEntry
 import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.UserPreference
 import com.zeapo.pwdstore.ui.dialogs.PasswordGeneratorDialogFragment
-import com.zeapo.pwdstore.utils.Otp
+import com.zeapo.pwdstore.utils.OTP
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -133,7 +133,7 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
 
                 generate_password?.setOnClickListener {
                     PasswordGeneratorDialogFragment()
-                        .show(supportFragmentManager, "generator")
+                            .show(supportFragmentManager, "generator")
                 }
 
                 title = getString(R.string.new_password_title)
@@ -333,16 +333,20 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
 
                                 if (entry.hasTotp()) {
                                     crypto_copy_otp.setOnClickListener {
-                                        copyOtpToClipBoard(
-                                                Otp.calculateCode(
-                                                        entry.totpSecret,
-                                                        Date().time / (1000 * entry.totpPeriod),
-                                                        entry.totpAlgorithm,
-                                                        entry.digits)
-                                        )
+                                        OTP.calculateCode(
+                                                entry.totpSecret,
+                                                Date().time / (1000 * entry.totpPeriod),
+                                                entry.totpAlgorithm,
+                                                entry.digits).let {
+                                            if (!it.isNullOrEmpty()) {
+                                                copyOtpToClipBoard(it)
+                                            } else {
+                                                showSnackbar("Error generating OTP")
+                                            }
+                                        }
                                     }
                                     crypto_otp_show.text =
-                                            Otp.calculateCode(
+                                            OTP.calculateCode(
                                                     entry.totpSecret,
                                                     Date().time / (1000 * entry.totpPeriod),
                                                     entry.totpAlgorithm,
@@ -491,8 +495,7 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
     private fun editPassword() {
         setContentView(R.layout.encrypt_layout)
         generate_password?.setOnClickListener {
-            PasswordGeneratorDialogFragment()
-                .show(supportFragmentManager, "generator")
+            PasswordGeneratorDialogFragment().show(supportFragmentManager, "generator")
         }
 
         title = getString(R.string.edit_password_title)
@@ -536,9 +539,15 @@ class PgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBound {
     }
 
     private fun calculateHotp(entry: PasswordEntry) {
-        copyOtpToClipBoard(Otp.calculateCode(entry.hotpSecret, entry.hotpCounter!! + 1, "sha1", entry.digits))
-        crypto_otp_show.text = Otp.calculateCode(entry.hotpSecret, entry.hotpCounter + 1, "sha1", entry.digits)
-        crypto_extra_show.text = entry.extraContent
+        OTP.calculateCode(entry.hotpSecret, entry.hotpCounter!! + 1, "sha1", entry.digits).let {
+            if (!it.isNullOrEmpty()) {
+                copyOtpToClipBoard(it)
+                crypto_otp_show.text = OTP.calculateCode(entry.hotpSecret, entry.hotpCounter + 1, "sha1", entry.digits)
+                crypto_extra_show.text = entry.extraContent
+            } else {
+                showSnackbar("Error generating OTP")
+            }
+        }
     }
 
     private fun calculateAndCommitHotp(entry: PasswordEntry) {

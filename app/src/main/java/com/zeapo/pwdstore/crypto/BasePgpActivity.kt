@@ -5,6 +5,7 @@
 package com.zeapo.pwdstore.crypto
 
 import android.app.PendingIntent
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.IntentSender
@@ -12,17 +13,25 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.TextUtils
 import android.text.format.DateUtils
+import android.text.method.PasswordTransformationMethod
 import android.util.Log
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
+import android.widget.Button
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.getSystemService
 import androidx.preference.PreferenceManager
 import com.google.android.material.snackbar.Snackbar
+import com.zeapo.pwdstore.PasswordEntry
 import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.UserPreference
+import kotlinx.android.synthetic.main.decrypt_layout.*
 import me.msfjarvis.openpgpktx.OpenPgpError
 import me.msfjarvis.openpgpktx.util.OpenPgpApi
 import me.msfjarvis.openpgpktx.util.OpenPgpServiceConnection
+import org.apache.commons.io.FilenameUtils
 import org.openintents.openpgp.IOpenPgpService2
 
 @Suppress("Registered")
@@ -33,11 +42,15 @@ open class BasePgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBou
 
     var api: OpenPgpApi? = null
     var mServiceConnection: OpenPgpServiceConnection? = null
+    var passwordEntry: PasswordEntry? = null
+
+    var editName: String? = null
+    var editPass: String? = null
+    var editExtra: String? = null
 
     val repoPath: String by lazy { intent.getStringExtra("REPO_PATH") }
-
     val fullPath: String by lazy { intent.getStringExtra("FILE_PATH") }
-    val name: String by lazy { PgpActivity.getName(fullPath) }
+    val name: String by lazy { getName(fullPath) }
     val lastChangedString: CharSequence by lazy {
         getLastChangedString(
             intent.getLongExtra(
@@ -91,6 +104,19 @@ open class BasePgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBou
 
     private fun initOpenPgpApi() {
         api = api ?: OpenPgpApi(this, mServiceConnection!!.service!!)
+    }
+
+    fun copyTextToClipboard(text: String?, @StringRes noticeTextRes: Int = 0, vararg formatArgs: Any = emptyArray()) {
+        val clip = ClipData.newPlainText("pgp_handler_result_pm", text)
+        clipboard?.setPrimaryClip(clip)
+        if (noticeTextRes != 0) {
+            showSnackbar(
+                if (formatArgs.size > 1)
+                    resources.getString(noticeTextRes, formatArgs)
+                else
+                    resources.getString(noticeTextRes)
+            )
+        }
     }
 
     /**
@@ -152,11 +178,80 @@ open class BasePgpActivity : AppCompatActivity(), OpenPgpServiceConnection.OnBou
         return DateUtils.getRelativeTimeSpanString(this, timeStamp, true)
     }
 
+    inner class HoldToShowPasswordTransformation constructor(button: Button, private val onToggle: Runnable) :
+        PasswordTransformationMethod(), View.OnTouchListener {
+        private var shown = false
+
+        init {
+            button.setOnTouchListener(this)
+        }
+
+        override fun getTransformation(charSequence: CharSequence, view: View): CharSequence {
+            return if (shown) charSequence else super.getTransformation("12345", view)
+        }
+
+        @Suppress("ClickableViewAccessibility")
+        override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
+            when (motionEvent.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    shown = true
+                    onToggle.run()
+                }
+                MotionEvent.ACTION_UP -> {
+                    shown = false
+                    onToggle.run()
+                }
+            }
+            return false
+        }
+    }
+
     companion object {
         const val OPEN_PGP_BOUND = 101
         const val REQUEST_DECRYPT = 202
         const val REQUEST_KEY_ID = 203
 
         const val TAG = "BasePgpActivity"
+
+        /**
+         * Gets the relative path to the repository
+         */
+        fun getRelativePath(fullPath: String, repositoryPath: String): String =
+            fullPath.replace(repositoryPath, "").replace("/+".toRegex(), "/")
+
+        /**
+         * Gets the Parent path, relative to the repository
+         */
+        fun getParentPath(fullPath: String, repositoryPath: String): String {
+            val relativePath = getRelativePath(fullPath, repositoryPath)
+            val index = relativePath.lastIndexOf("/")
+            return "/${relativePath.substring(startIndex = 0, endIndex = index + 1)}/".replace("/+".toRegex(), "/")
+        }
+
+        /**
+         * Gets the name of the password (excluding .gpg)
+         */
+        fun getName(fullPath: String): String {
+            return FilenameUtils.getBaseName(fullPath)
+        }
+
+        /**
+         * /path/to/store/social/facebook.gpg -> social/facebook
+         */
+        @JvmStatic
+        fun getLongName(fullPath: String, repositoryPath: String, basename: String): String {
+            var relativePath = getRelativePath(fullPath, repositoryPath)
+            return if (relativePath.isNotEmpty() && relativePath != "/") {
+                // remove preceding '/'
+                relativePath = relativePath.substring(1)
+                if (relativePath.endsWith('/')) {
+                    relativePath + basename
+                } else {
+                    "$relativePath/$basename"
+                }
+            } else {
+                basename
+            }
+        }
     }
 }

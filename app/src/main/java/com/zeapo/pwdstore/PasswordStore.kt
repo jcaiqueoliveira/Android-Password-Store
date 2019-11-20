@@ -33,8 +33,9 @@ import androidx.fragment.app.FragmentManager
 import androidx.preference.PreferenceManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.zeapo.pwdstore.crypto.BasePgpActivity.Companion.getLongName
+import com.zeapo.pwdstore.crypto.PasswordEditActivity
 import com.zeapo.pwdstore.crypto.PgpActivity
-import com.zeapo.pwdstore.crypto.PgpActivity.Companion.getLongName
 import com.zeapo.pwdstore.git.GitActivity
 import com.zeapo.pwdstore.git.GitAsyncTask
 import com.zeapo.pwdstore.git.GitOperation
@@ -456,10 +457,9 @@ class PasswordStore : AppCompatActivity() {
         }
         val currentDir = currentDir
         Log.i(TAG, "Adding file to : " + currentDir!!.absolutePath)
-        val intent = Intent(this, PgpActivity::class.java)
+        val intent = Intent(this, PasswordEditActivity::class.java)
         intent.putExtra("FILE_PATH", currentDir.absolutePath)
         intent.putExtra("REPO_PATH", getRepositoryDirectory(applicationContext).absolutePath)
-        intent.putExtra("OPERATION", "ENCRYPT")
         startActivityForResult(intent, REQUEST_CODE_ENCRYPT)
     }
 

@@ -4,15 +4,11 @@
  */
 package com.zeapo.pwdstore
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo.Builder
 import android.content.pm.ShortcutManager
-import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
@@ -24,15 +20,11 @@ import android.view.MenuItem
 import android.view.MenuItem.OnActionExpandListener
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.SearchView.OnQueryTextListener
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
 import androidx.preference.PreferenceManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import com.zeapo.pwdstore.crypto.PgpActivity
 import com.zeapo.pwdstore.crypto.PgpActivity.Companion.getLongName
 import com.zeapo.pwdstore.git.GitActivity
@@ -85,71 +77,19 @@ class PasswordStore : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         activity = this
         settings = PreferenceManager.getDefaultSharedPreferences(this.applicationContext)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             shortcutManager = getSystemService(ShortcutManager::class.java)
         }
-
-        // If user opens app with permission granted then revokes and returns,
-        // prevent attempt to create password list fragment
-        var savedInstance = savedInstanceState
-        if (savedInstanceState != null && (!settings.getBoolean("git_external", false) ||
-                        ContextCompat.checkSelfPermission(
-                                activity, Manifest.permission.READ_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED)) {
-            savedInstance = null
-        }
-        super.onCreate(savedInstance)
+        super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pwdstore)
     }
 
     public override fun onResume() {
         super.onResume()
-        // do not attempt to checkLocalRepository() if no storage permission: immediate crash
-        if (settings.getBoolean("git_external", false)) {
-            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                    val snack = Snackbar.make(
-                            findViewById(R.id.main_layout),
-                            getString(R.string.access_sdcard_text),
-                            Snackbar.LENGTH_INDEFINITE)
-                            .setAction(R.string.dialog_ok) {
-                                ActivityCompat.requestPermissions(
-                                        activity,
-                                        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                                        REQUEST_EXTERNAL_STORAGE)
-                            }
-                    snack.show()
-                    val view = snack.view
-                    val tv: AppCompatTextView = view.findViewById(com.google.android.material.R.id.snackbar_text)
-                    tv.setTextColor(Color.WHITE)
-                    tv.maxLines = 10
-                } else {
-                    // No explanation needed, we can request the permission.
-                    ActivityCompat.requestPermissions(
-                            activity,
-                            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                            REQUEST_EXTERNAL_STORAGE)
-                }
-            } else {
-                checkLocalRepository()
-            }
-        } else {
-            checkLocalRepository()
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        // If request is cancelled, the result arrays are empty.
-        if (requestCode == REQUEST_EXTERNAL_STORAGE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkLocalRepository()
-            }
-        }
+        checkLocalRepository()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -721,7 +661,6 @@ class PasswordStore : AppCompatActivity() {
         private const val CLONE_REPO_BUTTON = 401
         private const val NEW_REPO_BUTTON = 402
         private const val HOME = 403
-        private const val REQUEST_EXTERNAL_STORAGE = 50
         private fun isPrintable(c: Char): Boolean {
             val block = UnicodeBlock.of(c)
             return (!Character.isISOControl(c) &&

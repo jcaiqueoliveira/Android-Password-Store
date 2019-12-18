@@ -10,6 +10,7 @@ import android.content.SharedPreferences
 import android.content.pm.ShortcutInfo.Builder
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.TextUtils
@@ -22,6 +23,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.SearchView.OnQueryTextListener
+import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.FragmentManager
 import androidx.preference.PreferenceManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -185,6 +187,7 @@ class PasswordStore : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun openSettings(view: View?) {
         val intent: Intent
         try {
@@ -195,10 +198,12 @@ class PasswordStore : AppCompatActivity() {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun cloneExistingRepository(view: View?) {
         initRepository(CLONE_REPO_BUTTON)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun createNewRepository(view: View?) {
         initRepository(NEW_REPO_BUTTON)
     }
@@ -227,10 +232,10 @@ class PasswordStore : AppCompatActivity() {
     }
 
     private fun initializeRepositoryInfo() {
-        val externalRepoPath = settings.getString("git_external_repo", null)
+        val externalRepoPath = settings.getString("git_external_repo_uri", null)
         if (settings.getBoolean("git_external", false) && externalRepoPath != null) {
-            val dir = File(externalRepoPath)
-            if (dir.exists() && dir.isDirectory &&
+            val dir = DocumentFile.fromTreeUri(this, Uri.parse(externalRepoPath))
+            if (dir != null && dir.exists() && dir.isDirectory &&
                     getPasswords(dir, getRepositoryDirectory(this), sortOrder).isNotEmpty()) {
                 closeRepository()
                 checkLocalRepository()
@@ -252,24 +257,24 @@ class PasswordStore : AppCompatActivity() {
     }
 
     private fun checkLocalRepository() {
-        val repo = initialize(this)
+        val repo = DocumentFile.fromTreeUri(this, Uri.parse(settings.getString("git_external_repo_uri", "")))
         if (repo == null) {
             val intent = Intent(activity, UserPreference::class.java)
             intent.putExtra("operation", "git_external")
             startActivityForResult(intent, HOME)
         } else {
-            checkLocalRepository(getRepositoryDirectory(applicationContext))
+            checkLocalRepository(repo)
         }
     }
 
-    private fun checkLocalRepository(localDir: File?) {
+    private fun checkLocalRepository(localDir: DocumentFile?) {
         val fragmentManager = supportFragmentManager
         val fragmentTransaction = fragmentManager.beginTransaction()
         if (localDir != null && settings.getBoolean("repository_initialized", false)) {
-            Log.d(TAG, "Check, dir: " + localDir.absolutePath)
+            Log.d(TAG, "Check, dir: $localDir")
             // do not push the fragment if we already have it
             if (fragmentManager.findFragmentByTag("PasswordsList") == null ||
-                    settings.getBoolean("repo_changed", false)) {
+                settings.getBoolean("repo_changed", false)) {
                 settings.edit().putBoolean("repo_changed", false).apply()
                 plist = PasswordFragment()
                 val args = Bundle()
@@ -505,7 +510,7 @@ class PasswordStore : AppCompatActivity() {
                                             data!!.extras!!.getString("LONG_NAME")))
                     refreshListAdapter()
                 }
-                GitActivity.REQUEST_INIT, NEW_REPO_BUTTON -> initializeRepositoryInfo()
+                GitActivity.REQUEST_INIT, NEW_REPO_BUTTON -> initializeRepositoryInfo(this)
                 GitActivity.REQUEST_SYNC, GitActivity.REQUEST_PULL -> updateListAdapter()
                 HOME -> checkLocalRepository()
                 // duplicate code

@@ -4,15 +4,15 @@
  */
 package com.zeapo.pwdstore.utils
 
+import androidx.documentfile.provider.DocumentFile
 import com.zeapo.pwdstore.crypto.PgpActivity
-import java.io.File
 
 data class PasswordItem(
     val name: String,
     val parent: PasswordItem? = null,
     val type: Char,
-    val file: File,
-    val rootDir: File
+    val file: DocumentFile,
+    val rootDir: DocumentFile
 ) : Comparable<PasswordItem> {
     val fullPathToParent = file.absolutePath
             .replace(rootDir.absolutePath, "")
@@ -46,9 +46,9 @@ data class PasswordItem(
         @JvmStatic
         fun newCategory(
             name: String,
-            file: File,
+            file: DocumentFile,
             parent: PasswordItem,
-            rootDir: File
+            rootDir: DocumentFile
         ): PasswordItem {
             return PasswordItem(name, parent, TYPE_CATEGORY, file, rootDir)
         }
@@ -56,8 +56,8 @@ data class PasswordItem(
         @JvmStatic
         fun newCategory(
             name: String,
-            file: File,
-            rootDir: File
+            file: DocumentFile,
+            rootDir: DocumentFile
         ): PasswordItem {
             return PasswordItem(name, null, TYPE_CATEGORY, file, rootDir)
         }
@@ -65,9 +65,9 @@ data class PasswordItem(
         @JvmStatic
         fun newPassword(
             name: String,
-            file: File,
+            file: DocumentFile,
             parent: PasswordItem,
-            rootDir: File
+            rootDir: DocumentFile
         ): PasswordItem {
             return PasswordItem(name, parent, TYPE_PASSWORD, file, rootDir)
         }
@@ -75,8 +75,8 @@ data class PasswordItem(
         @JvmStatic
         fun newPassword(
             name: String,
-            file: File,
-            rootDir: File
+            file: DocumentFile,
+            rootDir: DocumentFile
         ): PasswordItem {
             return PasswordItem(name, null, TYPE_PASSWORD, file, rootDir)
         }

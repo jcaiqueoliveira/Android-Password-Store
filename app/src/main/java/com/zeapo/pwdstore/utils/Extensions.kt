@@ -6,6 +6,7 @@ package com.zeapo.pwdstore.utils
 
 import android.content.Context
 import android.util.TypedValue
+import androidx.documentfile.provider.DocumentFile
 
 fun String.splitLines(): Array<String> {
     return split("\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
@@ -16,3 +17,6 @@ fun Context.resolveAttribute(attr: Int): Int {
     this.theme.resolveAttribute(attr, typedValue, true)
     return typedValue.data
 }
+
+val DocumentFile.isHidden: Boolean
+    get() = name?.get(0) ?: ' ' == '.'

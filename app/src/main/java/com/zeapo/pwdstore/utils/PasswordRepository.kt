@@ -6,11 +6,10 @@ package com.zeapo.pwdstore.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.documentfile.provider.DocumentFile
 import androidx.preference.PreferenceManager
 import java.io.File
-import java.io.FileFilter
 import java.util.Comparator
-import org.apache.commons.io.filefilter.FileFilterUtils
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
@@ -144,8 +143,8 @@ open class PasswordRepository protected constructor() {
                 settings = PreferenceManager.getDefaultSharedPreferences(context.applicationContext)
             }
             return if (settings.getBoolean("git_external", false)) {
-                val externalRepo = settings.getString("git_external_repo", null)
-                File(requireNotNull(externalRepo))
+                val externalRepoUri = settings.getString("git_external_repo_ur", null)
+                DocumentFile.fromTreeUri(context, externalRepoUri)
             } else {
                 File(context.filesDir.toString() + "/store")
             }
@@ -174,7 +173,7 @@ open class PasswordRepository protected constructor() {
          * @return a list of passwords in the root direcotyr
          */
         @JvmStatic
-        fun getPasswords(rootDir: File, sortOrder: PasswordSortOrder): ArrayList<PasswordItem> {
+        fun getPasswords(rootDir: DocumentFile, sortOrder: PasswordSortOrder): ArrayList<PasswordItem> {
             return getPasswords(rootDir, rootDir, sortOrder)
         }
 
@@ -185,19 +184,23 @@ open class PasswordRepository protected constructor() {
          * @return the list of gpg files in that directory
          */
         @JvmStatic
-        fun getFilesList(path: File?): ArrayList<File> {
+        fun getFilesList(path: DocumentFile?): ArrayList<DocumentFile> {
             if (path == null || !path.exists()) return ArrayList()
 
-            val directories = (path.listFiles(FileFilterUtils.directoryFileFilter() as FileFilter)
-                    ?: emptyArray()).toList()
-            val files = (path.listFiles(FileFilterUtils.suffixFileFilter(".gpg") as FileFilter)
-                    ?: emptyArray()).toList()
+            val directories = ArrayList<DocumentFile>()
+            val files = ArrayList<DocumentFile>()
+            val listRes = path.listFiles()
+            for (i in listRes.indices) {
+                if (listRes[i].isFile)
+                    files.add(listRes[i])
+                else
+                    directories.add(listRes[i])
+            }
 
-            val items = ArrayList<File>()
-            items.addAll(directories)
-            items.addAll(files)
-
-            return items
+            return ArrayList<DocumentFile>().also {
+                it.addAll(directories)
+                it.addAll(files)
+            }
         }
 
         /**
@@ -207,7 +210,7 @@ open class PasswordRepository protected constructor() {
          * @return a list of password items
          */
         @JvmStatic
-        fun getPasswords(path: File, rootDir: File, sortOrder: PasswordSortOrder): ArrayList<PasswordItem> {
+        fun getPasswords(path: DocumentFile, rootDir: DocumentFile, sortOrder: PasswordSortOrder): ArrayList<PasswordItem> {
             // We need to recover the passwords then parse the files
             val passList = getFilesList(path).also { it.sortBy { f -> f.name } }
             val passwordList = ArrayList<PasswordItem>()
@@ -221,9 +224,9 @@ open class PasswordRepository protected constructor() {
             }
             passList.forEach { file ->
                 passwordList.add(if (file.isFile) {
-                    PasswordItem.newPassword(file.name, file, rootDir)
+                    PasswordItem.newPassword(file.name!!, file, rootDir)
                 } else {
-                    PasswordItem.newCategory(file.name, file, rootDir)
+                    PasswordItem.newCategory(file.name!!, file, rootDir)
                 })
             }
             passwordList.sortWith(sortOrder.comparator)

@@ -2,7 +2,7 @@
  * Copyright © 2014-2019 The Android Password Store Authors. All Rights Reserved.
  * SPDX-License-Identifier: GPL-3.0-only
  */
-package com.passwordstore.android.db
+package com.passwordstore.android.db.dao
 
 import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
@@ -11,7 +11,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.matcher.ViewMatchers.assertThat
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.passwordstore.android.db.dao.StoreDao
+import com.passwordstore.android.db.TestDatabase
+import com.passwordstore.android.db.blockingObserve
 import com.passwordstore.android.db.entity.StoreEntity
 import java.io.IOException
 import org.hamcrest.CoreMatchers.equalTo

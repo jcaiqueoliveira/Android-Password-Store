@@ -4,9 +4,7 @@
  */
 package com.zeapo.pwdstore.git
 
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -16,14 +14,14 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Spinner
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.preference.PreferenceManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.UserPreference
+import com.zeapo.pwdstore.git.config.ConnectionMode
+import com.zeapo.pwdstore.git.config.Protocol
 import com.zeapo.pwdstore.git.config.SshApiSessionFactory
 import com.zeapo.pwdstore.utils.PasswordRepository
 import java.io.File
@@ -33,25 +31,12 @@ import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.lib.Constants
 import timber.log.Timber
 
-open class GitActivity : AppCompatActivity() {
-    private lateinit var context: Context
-    private lateinit var settings: SharedPreferences
-    private lateinit var protocol: String
-    private lateinit var connectionMode: String
-    private lateinit var hostname: String
+open class GitActivity : AbstractGitActivity() {
     private var identityBuilder: SshApiSessionFactory.IdentityBuilder? = null
     private var identity: SshApiSessionFactory.ApiIdentity? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        context = requireNotNull(this)
-
-        settings = PreferenceManager.getDefaultSharedPreferences(this)
-
-        protocol = settings.getString("git_remote_protocol", null) ?: "ssh://"
-        connectionMode = settings.getString("git_remote_auth", null) ?: "ssh-key"
-        hostname = settings.getString("git_remote_location", null) ?: ""
         val operationCode = intent.extras!!.getInt("Operation")
 
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
@@ -72,7 +57,7 @@ open class GitActivity : AppCompatActivity() {
                 connectionModeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(adapterView: AdapterView<*>, view: View, i: Int, l: Long) {
                         val selection = (findViewById<View>(R.id.connection_mode) as Spinner).selectedItem.toString()
-                        connectionMode = selection
+                        connectionMode = ConnectionMode.fromString(selection)
                         settings.edit().putString("git_remote_auth", selection).apply()
                     }
 
@@ -87,18 +72,18 @@ open class GitActivity : AppCompatActivity() {
                 protcolSpinner.adapter = protocolAdapter
                 protcolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(adapterView: AdapterView<*>, view: View, i: Int, l: Long) {
-                        protocol = (findViewById<View>(R.id.clone_protocol) as Spinner).selectedItem.toString()
-                        if (protocol == "ssh://") {
+                        protocol = Protocol.fromString((findViewById<View>(R.id.clone_protocol) as Spinner).selectedItem.toString())
+                        if (protocol == Protocol.Ssh) {
 
                             // select ssh-key auth mode as default and enable the spinner in case it was disabled
                             connectionModeSpinner.setSelection(0)
                             connectionModeSpinner.isEnabled = true
 
                             // however, if we have some saved that, that's more important!
-                            when {
-                                connectionMode.equals("ssh-key", ignoreCase = true) -> connectionModeSpinner.setSelection(0)
-                                connectionMode.equals("OpenKeychain", ignoreCase = true) -> connectionModeSpinner.setSelection(2)
-                                else -> connectionModeSpinner.setSelection(1)
+                            when(connectionMode) {
+                                ConnectionMode.Ssh -> connectionModeSpinner.setSelection(0)
+                                ConnectionMode.OpenKeychain -> connectionModeSpinner.setSelection(2)
+                                ConnectionMode.Username -> connectionModeSpinner.setSelection(1)
                             }
                         } else {
                             // select user/pwd auth-mode and disable the spinner
@@ -113,11 +98,10 @@ open class GitActivity : AppCompatActivity() {
                     }
                 }
 
-                if (protocol == "ssh://") {
-                    protcolSpinner.setSelection(0)
-                } else {
-                    protcolSpinner.setSelection(1)
-                }
+                protcolSpinner.setSelection(when (protocol) {
+                    Protocol.Ssh -> 0
+                    Protocol.Https -> 1
+                })
 
                 // init the server information
                 val serverUrl = findViewById<TextInputEditText>(R.id.server_url)
@@ -219,7 +203,7 @@ open class GitActivity : AppCompatActivity() {
 
         if (uri != null) {
             when (protocol) {
-                "ssh://" -> {
+                Protocol.Ssh -> {
                     var hostname = (serverUser.text.toString() +
                             "@" +
                             serverUrl.text.toString().trim { it <= ' ' } +
@@ -241,7 +225,7 @@ open class GitActivity : AppCompatActivity() {
 
                     if (hostname != "@:") uri.setText(hostname)
                 }
-                "https://" -> {
+                Protocol.Https -> {
                     val hostname = StringBuilder()
                     hostname.append(serverUrl.text.toString().trim { it <= ' ' })
 
@@ -256,8 +240,6 @@ open class GitActivity : AppCompatActivity() {
                     }
 
                     if (hostname.toString() != "@/") uri.setText(hostname)
-                }
-                else -> {
                 }
             }
         }
@@ -318,22 +300,18 @@ open class GitActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
+        return when (item.itemId) {
             R.id.user_pref -> try {
                 val intent = Intent(this, UserPreference::class.java)
                 startActivity(intent)
-                return true
+                true
             } catch (e: Exception) {
                 println("Exception caught :(")
                 e.printStackTrace()
+                false
             }
-
-            android.R.id.home -> {
-                finish()
-                return true
-            }
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
     }
 
     /**
@@ -346,8 +324,8 @@ open class GitActivity : AppCompatActivity() {
         editor.putString("git_remote_server", (findViewById<View>(R.id.server_url) as TextInputEditText).text.toString())
         editor.putString("git_remote_location", (findViewById<View>(R.id.server_path) as TextInputEditText).text.toString())
         editor.putString("git_remote_username", (findViewById<View>(R.id.server_user) as TextInputEditText).text.toString())
-        editor.putString("git_remote_protocol", protocol)
-        editor.putString("git_remote_auth", connectionMode)
+        editor.putString("git_remote_protocol", protocol.toString())
+        editor.putString("git_remote_auth", connectionMode.toString())
         editor.putString("git_remote_port", (findViewById<View>(R.id.server_port) as TextInputEditText).text.toString())
         editor.putString("git_remote_uri", (findViewById<View>(R.id.clone_uri) as TextInputEditText).text.toString())
 
@@ -359,18 +337,18 @@ open class GitActivity : AppCompatActivity() {
         hostname = hostname.replaceFirst("^.+://".toRegex(), "")
         (findViewById<View>(R.id.clone_uri) as TextInputEditText).setText(hostname)
 
-        if (protocol != "ssh://") {
-            hostname = protocol + hostname
+        if (protocol != Protocol.Ssh) {
+            hostname = protocol.toString() + hostname
         } else {
             // if the port is explicitly given, jgit requires the ssh://
             if (port.isNotEmpty() && port != "22")
-                hostname = protocol + hostname
+                hostname = protocol.toString() + hostname
 
             // did he forget the username?
             if (!hostname.matches("^.+@.+".toRegex())) {
                 MaterialAlertDialogBuilder(this)
-                        .setMessage(context.getString(R.string.forget_username_dialog_text))
-                        .setPositiveButton(context.getString(R.string.dialog_oops), null)
+                        .setMessage(getString(R.string.forget_username_dialog_text))
+                        .setPositiveButton(getString(R.string.dialog_oops), null)
                         .show()
                 return false
             }
@@ -405,7 +383,7 @@ open class GitActivity : AppCompatActivity() {
         email.setText(settings.getString("git_config_user_email", ""))
 
         // git status
-        val repo = PasswordRepository.getRepository(PasswordRepository.getRepositoryDirectory(context))
+        val repo = PasswordRepository.getRepository(PasswordRepository.getRepositoryDirectory(this))
         if (repo != null) {
             val commitHash = findViewById<AppCompatTextView>(R.id.git_commit_hash)
             try {
@@ -434,8 +412,8 @@ open class GitActivity : AppCompatActivity() {
 
         if (!email.matches(emailPattern.toRegex())) {
             MaterialAlertDialogBuilder(this)
-                    .setMessage(context.getString(R.string.invalid_email_dialog_text))
-                    .setPositiveButton(context.getString(R.string.dialog_oops), null)
+                    .setMessage(getString(R.string.invalid_email_dialog_text))
+                    .setPositiveButton(getString(R.string.dialog_oops), null)
                     .show()
             return false
         }
@@ -471,7 +449,7 @@ open class GitActivity : AppCompatActivity() {
         if (PasswordRepository.getRepository(null) == null) {
             PasswordRepository.initialize(this)
         }
-        val localDir = requireNotNull(PasswordRepository.getRepositoryDirectory(context))
+        val localDir = requireNotNull(PasswordRepository.getRepositoryDirectory(this))
 
         if (!saveConfiguration())
             return
@@ -531,14 +509,14 @@ open class GitActivity : AppCompatActivity() {
                 settings.getString("git_remote_server", "")!!.isEmpty() ||
                 settings.getString("git_remote_location", "")!!.isEmpty())
             MaterialAlertDialogBuilder(this)
-                    .setMessage(context.getString(R.string.set_information_dialog_text))
-                    .setPositiveButton(context.getString(R.string.dialog_positive)) { _, _ ->
-                        val intent = Intent(context, UserPreference::class.java)
+                    .setMessage(getString(R.string.set_information_dialog_text))
+                    .setPositiveButton(getString(R.string.dialog_positive)) { _, _ ->
+                        val intent = Intent(this, UserPreference::class.java)
                         startActivityForResult(intent, REQUEST_PULL)
                     }
-                    .setNegativeButton(context.getString(R.string.dialog_negative)) { _, _ ->
+                    .setNegativeButton(getString(R.string.dialog_negative)) { _, _ ->
                         // do nothing :(
-                        setResult(AppCompatActivity.RESULT_OK)
+                        setResult(RESULT_OK)
                         finish()
                     }
                     .show()
@@ -560,14 +538,14 @@ open class GitActivity : AppCompatActivity() {
      */
     private fun launchGitOperation(operation: Int) {
         val op: GitOperation
-        val localDir = requireNotNull(PasswordRepository.getRepositoryDirectory(context))
+        val localDir = requireNotNull(PasswordRepository.getRepositoryDirectory(this))
 
         try {
 
             // Before launching the operation with OpenKeychain auth, we need to issue several requests
             // to the OpenKeychain API. IdentityBuild will take care of launching the relevant intents,
             // we just need to keep calling it until it returns a completed ApiIdentity.
-            if (connectionMode.equals("OpenKeychain", ignoreCase = true) && identity == null) {
+            if (connectionMode == ConnectionMode.OpenKeychain && identity == null) {
                 // Lazy initialization of the IdentityBuilder
                 if (identityBuilder == null) {
                     identityBuilder = SshApiSessionFactory.IdentityBuilder(this)
@@ -597,7 +575,7 @@ open class GitActivity : AppCompatActivity() {
 
                 else -> {
                     Timber.tag(TAG).e("Operation not recognized : $operation")
-                    setResult(AppCompatActivity.RESULT_CANCELED)
+                    setResult(RESULT_CANCELED)
                     finish()
                     return
                 }
@@ -636,10 +614,10 @@ open class GitActivity : AppCompatActivity() {
             return
         }
 
-        if (resultCode == AppCompatActivity.RESULT_CANCELED) {
-            setResult(AppCompatActivity.RESULT_CANCELED)
+        if (resultCode == RESULT_CANCELED) {
+            setResult(RESULT_CANCELED)
             finish()
-        } else if (resultCode == AppCompatActivity.RESULT_OK) {
+        } else if (resultCode == RESULT_OK) {
             // If an operation has been re-queued via this mechanism, let the
             // IdentityBuilder attempt to extract some updated state from the intent before
             // trying to re-launch the operation.

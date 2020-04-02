@@ -41,6 +41,8 @@
 
         <activity android:name=".git.GitActivity" />
 
+        <activity android:name=".git.GitServerConfigActivity" />
+
         <activity
             android:name=".UserPreference"
             android:parentActivityName=".PasswordStore"

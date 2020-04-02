@@ -6,14 +6,9 @@ package com.zeapo.pwdstore.git
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.Spinner
 import androidx.appcompat.widget.AppCompatTextView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -21,15 +16,13 @@ import com.google.android.material.textfield.TextInputEditText
 import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.UserPreference
 import com.zeapo.pwdstore.git.config.ConnectionMode
-import com.zeapo.pwdstore.git.config.Protocol
 import com.zeapo.pwdstore.git.config.SshApiSessionFactory
 import com.zeapo.pwdstore.utils.PasswordRepository
-import java.io.File
-import java.io.IOException
-import java.util.regex.Pattern
 import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.lib.Constants
 import timber.log.Timber
+import java.io.File
+import java.io.IOException
 
 open class GitActivity : AbstractGitActivity() {
     private var identityBuilder: SshApiSessionFactory.IdentityBuilder? = null
@@ -42,141 +35,6 @@ open class GitActivity : AbstractGitActivity() {
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
 
         when (operationCode) {
-            REQUEST_CLONE, EDIT_SERVER -> {
-                setContentView(R.layout.activity_git_clone)
-                setTitle(R.string.title_activity_git_clone)
-
-                val protcolSpinner = findViewById<Spinner>(R.id.clone_protocol)
-                val connectionModeSpinner = findViewById<Spinner>(R.id.connection_mode)
-
-                // init the spinner for connection modes
-                val connectionModeAdapter = ArrayAdapter.createFromResource(this,
-                        R.array.connection_modes, android.R.layout.simple_spinner_item)
-                connectionModeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                connectionModeSpinner.adapter = connectionModeAdapter
-                connectionModeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                    override fun onItemSelected(adapterView: AdapterView<*>, view: View, i: Int, l: Long) {
-                        val selection = (findViewById<View>(R.id.connection_mode) as Spinner).selectedItem.toString()
-                        connectionMode = ConnectionMode.fromString(selection)
-                        settings.edit().putString("git_remote_auth", selection).apply()
-                    }
-
-                    override fun onNothingSelected(adapterView: AdapterView<*>) {
-                    }
-                }
-
-                // init the spinner for protocols
-                val protocolAdapter = ArrayAdapter.createFromResource(this,
-                        R.array.clone_protocols, android.R.layout.simple_spinner_item)
-                protocolAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                protcolSpinner.adapter = protocolAdapter
-                protcolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                    override fun onItemSelected(adapterView: AdapterView<*>, view: View, i: Int, l: Long) {
-                        protocol = Protocol.fromString((findViewById<View>(R.id.clone_protocol) as Spinner).selectedItem.toString())
-                        if (protocol == Protocol.Ssh) {
-
-                            // select ssh-key auth mode as default and enable the spinner in case it was disabled
-                            connectionModeSpinner.setSelection(0)
-                            connectionModeSpinner.isEnabled = true
-
-                            // however, if we have some saved that, that's more important!
-                            when(connectionMode) {
-                                ConnectionMode.Ssh -> connectionModeSpinner.setSelection(0)
-                                ConnectionMode.OpenKeychain -> connectionModeSpinner.setSelection(2)
-                                ConnectionMode.Username -> connectionModeSpinner.setSelection(1)
-                            }
-                        } else {
-                            // select user/pwd auth-mode and disable the spinner
-                            connectionModeSpinner.setSelection(1)
-                            connectionModeSpinner.isEnabled = false
-                        }
-
-                        updateURI()
-                    }
-
-                    override fun onNothingSelected(adapterView: AdapterView<*>) {
-                    }
-                }
-
-                protcolSpinner.setSelection(when (protocol) {
-                    Protocol.Ssh -> 0
-                    Protocol.Https -> 1
-                })
-
-                // init the server information
-                val serverUrl = findViewById<TextInputEditText>(R.id.server_url)
-                val serverPort = findViewById<TextInputEditText>(R.id.server_port)
-                val serverPath = findViewById<TextInputEditText>(R.id.server_path)
-                val serverUser = findViewById<TextInputEditText>(R.id.server_user)
-                val serverUri = findViewById<TextInputEditText>(R.id.clone_uri)
-
-                serverUrl.setText(settings.getString("git_remote_server", ""))
-                serverPort.setText(settings.getString("git_remote_port", ""))
-                serverUser.setText(settings.getString("git_remote_username", ""))
-                serverPath.setText(settings.getString("git_remote_location", ""))
-
-                serverUrl.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {}
-
-                    override fun onTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {
-                        if (serverUrl.isFocused)
-                            updateURI()
-                    }
-
-                    override fun afterTextChanged(editable: Editable) {}
-                })
-                serverPort.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {}
-
-                    override fun onTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {
-                        if (serverPort.isFocused)
-                            updateURI()
-                    }
-
-                    override fun afterTextChanged(editable: Editable) {}
-                })
-                serverUser.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {}
-
-                    override fun onTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {
-                        if (serverUser.isFocused)
-                            updateURI()
-                    }
-
-                    override fun afterTextChanged(editable: Editable) {}
-                })
-                serverPath.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {}
-
-                    override fun onTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {
-                        if (serverPath.isFocused)
-                            updateURI()
-                    }
-
-                    override fun afterTextChanged(editable: Editable) {}
-                })
-
-                serverUri.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {}
-
-                    override fun onTextChanged(charSequence: CharSequence, i: Int, i2: Int, i3: Int) {
-                        if (serverUri.isFocused)
-                            splitURI()
-                    }
-
-                    override fun afterTextChanged(editable: Editable) {}
-                })
-
-                if (operationCode == EDIT_SERVER) {
-                    findViewById<View>(R.id.clone_button).visibility = View.INVISIBLE
-                    findViewById<View>(R.id.save_button).visibility = View.VISIBLE
-                } else {
-                    findViewById<View>(R.id.clone_button).visibility = View.VISIBLE
-                    findViewById<View>(R.id.save_button).visibility = View.INVISIBLE
-                }
-
-                updateURI()
-            }
             EDIT_GIT_CONFIG -> {
                 setContentView(R.layout.activity_git_config)
                 setTitle(R.string.title_activity_git_config)
@@ -191,97 +49,8 @@ open class GitActivity : AbstractGitActivity() {
         }
     }
 
-    /**
-     * Fills in the server_uri field with the information coming from other fields
-     */
-    private fun updateURI() {
-        val uri = findViewById<TextInputEditText>(R.id.clone_uri)
-        val serverUrl = findViewById<TextInputEditText>(R.id.server_url)
-        val serverPort = findViewById<TextInputEditText>(R.id.server_port)
-        val serverPath = findViewById<TextInputEditText>(R.id.server_path)
-        val serverUser = findViewById<TextInputEditText>(R.id.server_user)
-
-        if (uri != null) {
-            when (protocol) {
-                Protocol.Ssh -> {
-                    var hostname = (serverUser.text.toString() +
-                            "@" +
-                            serverUrl.text.toString().trim { it <= ' ' } +
-                            ":")
-                    if (serverPort.text.toString() == "22") {
-                        hostname += serverPath.text.toString()
-
-                        findViewById<View>(R.id.warn_url).visibility = View.GONE
-                    } else {
-                        val warnUrl = findViewById<AppCompatTextView>(R.id.warn_url)
-                        if (!serverPath.text.toString().matches("/.*".toRegex()) && serverPort.text.toString().isNotEmpty()) {
-                            warnUrl.setText(R.string.warn_malformed_url_port)
-                            warnUrl.visibility = View.VISIBLE
-                        } else {
-                            warnUrl.visibility = View.GONE
-                        }
-                        hostname += serverPort.text.toString() + serverPath.text.toString()
-                    }
-
-                    if (hostname != "@:") uri.setText(hostname)
-                }
-                Protocol.Https -> {
-                    val hostname = StringBuilder()
-                    hostname.append(serverUrl.text.toString().trim { it <= ' ' })
-
-                    if (serverPort.text.toString() == "443") {
-                        hostname.append(serverPath.text.toString())
-
-                        findViewById<View>(R.id.warn_url).visibility = View.GONE
-                    } else {
-                        hostname.append("/")
-                        hostname.append(serverPort.text.toString())
-                                .append(serverPath.text.toString())
-                    }
-
-                    if (hostname.toString() != "@/") uri.setText(hostname)
-                }
-            }
-        }
-    }
-
-    /**
-     * Splits the information in server_uri into the other fields
-     */
-    private fun splitURI() {
-        val serverUri = findViewById<TextInputEditText>(R.id.clone_uri)
-        val serverUrl = findViewById<TextInputEditText>(R.id.server_url)
-        val serverPort = findViewById<TextInputEditText>(R.id.server_port)
-        val serverPath = findViewById<TextInputEditText>(R.id.server_path)
-        val serverUser = findViewById<TextInputEditText>(R.id.server_user)
-
-        val uri = serverUri.text.toString()
-        val pattern = Pattern.compile("(.+)@([\\w\\d.]+):([\\d]+)*(.*)")
-        val matcher = pattern.matcher(uri)
-        if (matcher.find()) {
-            val count = matcher.groupCount()
-            if (count > 1) {
-                serverUser.setText(matcher.group(1))
-                serverUrl.setText(matcher.group(2))
-            }
-            if (count == 4) {
-                serverPort.setText(matcher.group(3))
-                serverPath.setText(matcher.group(4))
-
-                val warnUrl = findViewById<AppCompatTextView>(R.id.warn_url)
-                if (!serverPath.text.toString().matches("/.*".toRegex()) && serverPort.text.toString().isNotEmpty()) {
-                    warnUrl.setText(R.string.warn_malformed_url_port)
-                    warnUrl.visibility = View.VISIBLE
-                } else {
-                    warnUrl.visibility = View.GONE
-                }
-            }
-        }
-    }
-
     public override fun onResume() {
         super.onResume()
-        updateURI()
     }
 
     override fun onDestroy() {
@@ -312,65 +81,6 @@ open class GitActivity : AbstractGitActivity() {
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
-
-    /**
-     * Saves the configuration found in the form
-     */
-    private fun saveConfiguration(): Boolean {
-        // remember the settings
-        val editor = settings.edit()
-
-        editor.putString("git_remote_server", (findViewById<View>(R.id.server_url) as TextInputEditText).text.toString())
-        editor.putString("git_remote_location", (findViewById<View>(R.id.server_path) as TextInputEditText).text.toString())
-        editor.putString("git_remote_username", (findViewById<View>(R.id.server_user) as TextInputEditText).text.toString())
-        editor.putString("git_remote_protocol", protocol.toString())
-        editor.putString("git_remote_auth", connectionMode.toString())
-        editor.putString("git_remote_port", (findViewById<View>(R.id.server_port) as TextInputEditText).text.toString())
-        editor.putString("git_remote_uri", (findViewById<View>(R.id.clone_uri) as TextInputEditText).text.toString())
-
-        // 'save' hostname variable for use by addRemote() either here or later
-        // in syncRepository()
-        hostname = (findViewById<View>(R.id.clone_uri) as TextInputEditText).text.toString()
-        val port = (findViewById<View>(R.id.server_port) as TextInputEditText).text.toString()
-        // don't ask the user, take off the protocol that he puts in
-        hostname = hostname.replaceFirst("^.+://".toRegex(), "")
-        (findViewById<View>(R.id.clone_uri) as TextInputEditText).setText(hostname)
-
-        if (protocol != Protocol.Ssh) {
-            hostname = protocol.toString() + hostname
-        } else {
-            // if the port is explicitly given, jgit requires the ssh://
-            if (port.isNotEmpty() && port != "22")
-                hostname = protocol.toString() + hostname
-
-            // did he forget the username?
-            if (!hostname.matches("^.+@.+".toRegex())) {
-                MaterialAlertDialogBuilder(this)
-                        .setMessage(getString(R.string.forget_username_dialog_text))
-                        .setPositiveButton(getString(R.string.dialog_oops), null)
-                        .show()
-                return false
-            }
-        }
-        if (PasswordRepository.isInitialized && settings.getBoolean("repository_initialized", false)) {
-            // don't just use the clone_uri text, need to use hostname which has
-            // had the proper protocol prepended
-            PasswordRepository.addRemote("origin", hostname, true)
-        }
-
-        editor.apply()
-        return true
-    }
-
-    /**
-     * Save the repository information to the shared preferences settings
-     */
-    @Suppress("UNUSED_PARAMETER")
-    fun saveConfiguration(view: View) {
-        if (!saveConfiguration())
-            return
-        finish()
     }
 
     private fun showGitConfig() {
@@ -451,9 +161,6 @@ open class GitActivity : AbstractGitActivity() {
         }
         val localDir = requireNotNull(PasswordRepository.getRepositoryDirectory(this))
 
-        if (!saveConfiguration())
-            return
-
         // Warn if non-empty folder unless it's a just-initialized store that has just a .git folder
         if (localDir.exists() && localDir.listFiles()!!.isNotEmpty() &&
                 !(localDir.listFiles()!!.size == 1 && localDir.listFiles()!![0].name == ".git")) {
@@ -505,9 +212,7 @@ open class GitActivity : AbstractGitActivity() {
      * @param operation the operation to execute can be REQUEST_PULL or REQUEST_PUSH
      */
     private fun syncRepository(operation: Int) {
-        if (settings.getString("git_remote_username", "")!!.isEmpty() ||
-                settings.getString("git_remote_server", "")!!.isEmpty() ||
-                settings.getString("git_remote_location", "")!!.isEmpty())
+        if (serverUser.isEmpty() || serverUrl.isEmpty() || hostname.isEmpty())
             MaterialAlertDialogBuilder(this)
                     .setMessage(getString(R.string.set_information_dialog_text))
                     .setPositiveButton(getString(R.string.dialog_positive)) { _, _ ->
@@ -634,7 +339,6 @@ open class GitActivity : AbstractGitActivity() {
         const val REQUEST_PUSH = 102
         const val REQUEST_CLONE = 103
         const val REQUEST_INIT = 104
-        const val EDIT_SERVER = 105
         const val REQUEST_SYNC = 106
 
         @Suppress("Unused")

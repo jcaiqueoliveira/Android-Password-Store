@@ -150,35 +150,6 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/label_clone_uri"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/repository_uri"
-        android:editable="false"
-        android:layout_margin="8dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/label_server_path">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/clone_uri"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textWebEmailAddress"/>
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <androidx.appcompat.widget.AppCompatTextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/red_rectangle"
-        android:textColor="@android:color/white"
-        android:visibility="gone"
-        android:id="@+id/warn_url"
-        android:layout_margin="8dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/label_clone_uri"/>
-
     <androidx.appcompat.widget.AppCompatTextView
         style="@style/TextAppearance.MaterialComponents.Headline6"
         android:id="@+id/label_connection_mode"
@@ -189,16 +160,7 @@
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/warn_url" />
-
-    <Spinner
-        android:id="@+id/connection_mode"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/warn_url"
-        app:layout_constraintStart_toEndOf="@id/label_connection_mode" />
+        app:layout_constraintTop_toBottomOf="@id/label_server_path" />
 
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/connection_mode_group"
@@ -247,24 +209,10 @@
 
     <com.google.android.material.button.MaterialButton
         style="@style/Widget.MaterialComponents.Button"
-        android:id="@+id/clone_button"
-        android:text="@string/clone_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="cloneRepository"
-        android:textColor="?android:attr/windowBackground"
-        android:layout_marginTop="8dp"
-        app:backgroundTint="?attr/colorSecondary"
-        app:layout_constraintTop_toBottomOf="@id/connection_mode_group"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <com.google.android.material.button.MaterialButton
-        style="@style/Widget.MaterialComponents.Button"
         android:id="@+id/save_button"
         android:text="@string/crypto_save"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="saveConfiguration"
         android:textColor="?android:attr/windowBackground"
         android:layout_marginTop="8dp"
         app:backgroundTint="?attr/colorSecondary"

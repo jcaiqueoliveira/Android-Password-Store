@@ -18,11 +18,11 @@ import com.zeapo.pwdstore.UserPreference
 import com.zeapo.pwdstore.git.config.ConnectionMode
 import com.zeapo.pwdstore.git.config.SshApiSessionFactory
 import com.zeapo.pwdstore.utils.PasswordRepository
+import java.io.File
+import java.io.IOException
 import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.lib.Constants
 import timber.log.Timber
-import java.io.File
-import java.io.IOException
 
 open class GitActivity : AbstractGitActivity() {
     private var identityBuilder: SshApiSessionFactory.IdentityBuilder? = null

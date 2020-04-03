@@ -1,3 +1,7 @@
+/*
+ * Copyright © 2014-2020 The Android Password Store Authors. All Rights Reserved.
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
 package com.zeapo.pwdstore.git
 
 import android.os.Bundle
@@ -43,8 +47,8 @@ class GitServerConfigActivity : AbstractGitActivity() {
             }
         }
 
-        binding.connectionModeGroup.addOnButtonCheckedListener {_ , checkedId, _ ->
-            connectionMode = when(checkedId) {
+        binding.connectionModeGroup.addOnButtonCheckedListener { _, checkedId, _ ->
+            connectionMode = when (checkedId) {
                 R.id.connection_mode_ssh -> ConnectionMode.Ssh
                 R.id.connection_mode_openkeychain -> ConnectionMode.OpenKeychain
                 R.id.connection_mode_username -> ConnectionMode.Username
@@ -82,7 +86,7 @@ class GitServerConfigActivity : AbstractGitActivity() {
 
         binding.saveButton.setOnClickListener {
             // Heavily simplified to drop all error checking.
-            hostname = when(protocol) {
+            hostname = when (protocol) {
                 Protocol.Ssh -> {
                     "$serverUser@${serverUrl.trim { it <= ' '}}:$serverPort/$serverPath"
                 }

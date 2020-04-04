@@ -1,6 +1,7 @@
 package com.zeapo.pwdstore.git
 
 import android.os.Bundle
+import android.util.Patterns
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.databinding.ActivityGitConfigBinding
@@ -39,7 +40,7 @@ class GitConfigActivity : AbstractGitActivity() {
         binding.saveButton.setOnClickListener {
             val email = binding.gitUserEmail.text.toString()
             val name = binding.gitUserName.text.toString()
-            if (!email.matches(EMAIL_PATTERN.toRegex())) {
+            if (!email.matches(Patterns.EMAIL_ADDRESS.toRegex())) {
                 MaterialAlertDialogBuilder(this)
                         .setMessage(getString(R.string.invalid_email_dialog_text))
                         .setPositiveButton(getString(R.string.dialog_oops), null)
@@ -53,9 +54,5 @@ class GitConfigActivity : AbstractGitActivity() {
                 editor.apply()
             }
         }
-    }
-
-    companion object {
-        private const val EMAIL_PATTERN = "^[^@]+@[^@]+$"
     }
 }

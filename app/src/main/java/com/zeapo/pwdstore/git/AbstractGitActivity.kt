@@ -73,6 +73,7 @@ abstract class AbstractGitActivity : AppCompatActivity() {
                 "${serverUrl.trim { it <= ' '}}/$serverPort/$serverPath"
             }
         }
+        PasswordRepository.addRemote("origin", hostname, true)
     }
 
     /**

@@ -197,7 +197,7 @@ open class GitActivity : AbstractGitActivity() {
                 }
             } catch (e: Exception) {
                 // This is what happens when jgit fails :(
-                // TODO Handle the diffent cases of exceptions
+                // TODO Handle the different cases of exceptions
                 e.printStackTrace()
                 MaterialAlertDialogBuilder(this).setMessage(e.message).show()
             }
@@ -227,7 +227,7 @@ open class GitActivity : AbstractGitActivity() {
                     .show()
         else {
             // check that the remote origin is here, else add it
-            PasswordRepository.addRemote("origin", hostname, false)
+            PasswordRepository.addRemote("origin", hostname, true)
             launchGitOperation(operation)
         }
     }

@@ -10,7 +10,6 @@ import android.view.MenuItem
 import androidx.annotation.CallSuper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
-import com.github.ajalt.timberkt.d
 import com.zeapo.pwdstore.git.config.ConnectionMode
 import com.zeapo.pwdstore.git.config.Protocol
 
@@ -36,12 +35,11 @@ abstract class AbstractGitActivity : AppCompatActivity() {
         settings = PreferenceManager.getDefaultSharedPreferences(this)
         protocol = Protocol.fromString(settings.getString("git_remote_protocol", null))
         connectionMode = ConnectionMode.fromString(settings.getString("git_remote_auth", null))
-        hostname = settings.getString("git_remote_location", null) ?: ""
         serverUrl = settings.getString("git_remote_server", null) ?: ""
         serverPort = settings.getString("git_remote_port", null) ?: ""
         serverUser = settings.getString("git_remote_username", null) ?: ""
         serverPath = settings.getString("git_remote_location", null) ?: ""
-        d { "hostname=$hostname,serverUrl=$serverUrl,serverPort=$serverPort,serverUser=$serverUser,serverPath=$serverPath" }
+        updateHostname()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -51,6 +49,17 @@ abstract class AbstractGitActivity : AppCompatActivity() {
                 true
             }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    fun updateHostname() {
+        hostname = when (protocol) {
+            Protocol.Ssh -> {
+                "$serverUser@${serverUrl.trim { it <= ' '}}:$serverPort/$serverPath"
+            }
+            Protocol.Https -> {
+                "${serverUrl.trim { it <= ' '}}/$serverPort/$serverPath"
+            }
         }
     }
 }

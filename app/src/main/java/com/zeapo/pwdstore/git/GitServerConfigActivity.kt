@@ -7,8 +7,6 @@ package com.zeapo.pwdstore.git
 import android.os.Bundle
 import androidx.core.content.edit
 import androidx.core.widget.doOnTextChanged
-import com.github.ajalt.timberkt.Timber
-import com.github.ajalt.timberkt.d
 import com.google.android.material.snackbar.Snackbar
 import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.databinding.ActivityGitCloneBinding
@@ -85,26 +83,15 @@ class GitServerConfigActivity : AbstractGitActivity() {
         }
 
         binding.saveButton.setOnClickListener {
-            // Heavily simplified to drop all error checking.
-            hostname = when (protocol) {
-                Protocol.Ssh -> {
-                    "$serverUser@${serverUrl.trim { it <= ' '}}:$serverPort/$serverPath"
-                }
-                Protocol.Https -> {
-                    "${serverUrl.trim { it <= ' '}}/$serverPort/$serverPath"
-                }
-            }
             settings.edit(true) {
                 putString("git_remote_protocol", protocol.toString())
                 putString("git_remote_auth", connectionMode.toString())
-                Timber.tag("GitServerConfigActivity").d { "hostname=$hostname" }
-                putString("git_remote_location", hostname)
                 putString("git_remote_server", serverUrl)
                 putString("git_remote_port", serverPort)
                 putString("git_remote_username", serverUser)
                 putString("git_remote_location", serverPath)
             }
-            Timber.tag("GitServerConfigActivity").d { settings.getString("git_remote_location", "") ?: "" }
+            updateHostname()
             Snackbar.make(binding.root, "Successfully saved configuration", Snackbar.LENGTH_SHORT).show()
         }
     }

@@ -104,13 +104,13 @@ abstract class AbstractGitActivity : AppCompatActivity() {
                     return
             }
 
-            when (operation) {
-                REQUEST_CLONE, GitOperation.GET_SSH_KEY_FROM_CLONE -> op = CloneOperation(localDir, this).setCommand(hostname)
-                REQUEST_PULL -> op = PullOperation(localDir, this).setCommand()
-                REQUEST_PUSH -> op = PushOperation(localDir, this).setCommand()
-                REQUEST_SYNC -> op = SyncOperation(localDir, this).setCommands()
-                BREAK_OUT_OF_DETACHED -> op = BreakOutOfDetached(localDir, this).setCommands()
-                REQUEST_RESET -> op = ResetToRemoteOperation(localDir, this).setCommands()
+            op = when (operation) {
+                REQUEST_CLONE, GitOperation.GET_SSH_KEY_FROM_CLONE -> CloneOperation(localDir, this).setCommand(hostname)
+                REQUEST_PULL -> PullOperation(localDir, this).setCommand()
+                REQUEST_PUSH -> PushOperation(localDir, this).setCommand()
+                REQUEST_SYNC -> SyncOperation(localDir, this).setCommands()
+                BREAK_OUT_OF_DETACHED -> BreakOutOfDetached(localDir, this).setCommands()
+                REQUEST_RESET -> ResetToRemoteOperation(localDir, this).setCommands()
                 SshApiSessionFactory.POST_SIGNATURE -> return
                 else -> {
                     Timber.tag(TAG).e("Operation not recognized : $operation")

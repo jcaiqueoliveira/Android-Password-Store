@@ -13,8 +13,8 @@ import com.zeapo.pwdstore.R
 import com.zeapo.pwdstore.UserPreference
 import com.zeapo.pwdstore.git.config.SshApiSessionFactory
 import com.zeapo.pwdstore.utils.PasswordRepository
-import org.apache.commons.io.FileUtils
 import java.io.IOException
+import org.apache.commons.io.FileUtils
 
 open class GitActivity : AbstractGitActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -16,8 +16,8 @@ import com.zeapo.pwdstore.git.config.ConnectionMode
 import com.zeapo.pwdstore.git.config.Protocol
 import com.zeapo.pwdstore.git.config.SshApiSessionFactory
 import com.zeapo.pwdstore.utils.PasswordRepository
-import timber.log.Timber
 import java.io.File
+import timber.log.Timber
 
 /**
  * Abstract AppCompatActivity that holds some information that is commonly shared across git-related

@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
+import com.zeapo.pwdstore.git.AbstractGitActivity
 import com.zeapo.pwdstore.git.GitActivity
 import com.zeapo.pwdstore.ui.adapters.PasswordRecyclerAdapter
 import com.zeapo.pwdstore.utils.PasswordItem
@@ -73,8 +74,8 @@ class PasswordFragment : Fragment() {
                 swipeRefresher.isRefreshing = false
             } else {
                 val intent = Intent(context, GitActivity::class.java)
-                intent.putExtra("Operation", GitActivity.REQUEST_SYNC)
-                startActivityForResult(intent, GitActivity.REQUEST_SYNC)
+                intent.putExtra("Operation", AbstractGitActivity.REQUEST_SYNC)
+                startActivityForResult(intent, AbstractGitActivity.REQUEST_SYNC)
             }
         }
         recyclerView = view.findViewById(R.id.pass_recycler)

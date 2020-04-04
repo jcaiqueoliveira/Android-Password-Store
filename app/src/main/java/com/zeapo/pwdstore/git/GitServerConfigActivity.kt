@@ -23,7 +23,6 @@ class GitServerConfigActivity : AbstractGitActivity() {
         super.onCreate(savedInstanceState)
         val binding = ActivityGitCloneBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setTitle(R.string.title_activity_git_clone)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         when (protocol) {

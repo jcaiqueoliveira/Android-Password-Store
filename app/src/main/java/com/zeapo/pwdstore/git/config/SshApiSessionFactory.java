@@ -9,8 +9,10 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
+
 import androidx.annotation.NonNull;
 import androidx.preference.PreferenceManager;
+
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.jcraft.jsch.Identity;
 import com.jcraft.jsch.JSch;
@@ -18,9 +20,8 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
 import com.zeapo.pwdstore.R;
-import com.zeapo.pwdstore.git.GitActivity;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import com.zeapo.pwdstore.git.AbstractGitActivity;
+
 import org.eclipse.jgit.errors.UnsupportedCredentialItem;
 import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
@@ -38,6 +39,9 @@ import org.openintents.ssh.authentication.request.Request;
 import org.openintents.ssh.authentication.request.SigningRequest;
 import org.openintents.ssh.authentication.request.SshPublicKeyRequest;
 import org.openintents.ssh.authentication.util.SshAuthenticationApiUtils;
+
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 public class SshApiSessionFactory extends GitConfigSessionFactory {
     /**
@@ -107,7 +111,7 @@ public class SshApiSessionFactory extends GitConfigSessionFactory {
         private SshAuthenticationApi api;
         private String keyId, description, alg;
         private byte[] publicKey;
-        private GitActivity callingActivity;
+        private AbstractGitActivity callingActivity;
         private SharedPreferences settings;
 
         /**
@@ -116,7 +120,7 @@ public class SshApiSessionFactory extends GitConfigSessionFactory {
          * @param callingActivity Activity that will be used to launch pending intents and that will
          *     receive and handle the results.
          */
-        public IdentityBuilder(GitActivity callingActivity) {
+        public IdentityBuilder(AbstractGitActivity callingActivity) {
             this.callingActivity = callingActivity;
 
             List<String> providers =

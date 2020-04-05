@@ -36,20 +36,24 @@ class GitServerConfigActivity : AbstractGitActivity() {
             ConnectionMode.Ssh -> binding.connectionModeSsh.isChecked = true
         }
 
-        binding.cloneProtocolGroup.addOnButtonCheckedListener { _, checkedId, _ ->
-            protocol = when (checkedId) {
-                R.id.clone_protocol_https -> Protocol.Https
-                R.id.clone_protocol_ssh -> Protocol.Ssh
-                else -> protocol
+        binding.cloneProtocolGroup.addOnButtonCheckedListener { _, checkedId, checked ->
+            if (checked) {
+                protocol = when (checkedId) {
+                    R.id.clone_protocol_https -> Protocol.Https
+                    R.id.clone_protocol_ssh -> Protocol.Ssh
+                    else -> protocol
+                }
             }
         }
 
-        binding.connectionModeGroup.addOnButtonCheckedListener { _, checkedId, _ ->
-            connectionMode = when (checkedId) {
-                R.id.connection_mode_ssh -> ConnectionMode.Ssh
-                R.id.connection_mode_openkeychain -> ConnectionMode.OpenKeychain
-                R.id.connection_mode_username -> ConnectionMode.Username
-                else -> connectionMode
+        binding.connectionModeGroup.addOnButtonCheckedListener { _, checkedId, checked ->
+            if (checked) {
+                connectionMode = when (checkedId) {
+                    R.id.connection_mode_ssh -> ConnectionMode.Ssh
+                    R.id.connection_mode_openkeychain -> ConnectionMode.OpenKeychain
+                    R.id.connection_mode_username -> ConnectionMode.Username
+                    else -> connectionMode
+                }
             }
         }
 
